@@ -1,2 +1,3 @@
-# blockchain
-Blockchain implementation using Go + Fiber
+# Blockchain
+
+Our goal is start simple and making the blockchain much complex
