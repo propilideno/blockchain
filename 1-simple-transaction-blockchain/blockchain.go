@@ -11,23 +11,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-// BlockData is an interface for data that can be stored in a block
-type BlockData interface {
-	Validate() bool
-}
-
-// Transaction represents a blockchain transaction
-type Transaction struct {
-	From   string  `json:"from"`
-	To     string  `json:"to"`
-	Amount float64 `json:"amount"`
-}
-
-// Validate checks if the transaction is valid
-func (t Transaction) Validate() bool {
-	return t.From != "" && t.To != "" && t.Amount > 0
-}
-
 // Block represents each 'item' in the blockchain
 type Block struct {
 	Data         []BlockData
@@ -133,7 +116,7 @@ func main() {
 		block := blockchain.mine()
 
 		if block.Hash == "" {
-			return c.Status(fiber.StatusForbidden).SendString("No transactions to mine")
+			return c.Status(fiber.StatusForbidden).SendString("No data to mine")
 		}
 
 		response := fiber.Map{
@@ -145,16 +128,16 @@ func main() {
 	})
 
 	// Add new block data (transaction)
-	app.Post("/transactions/new", func(c *fiber.Ctx) error {
-		var transaction Transaction
-		if err := c.BodyParser(&transaction); err != nil {
+	app.Post("/data/new", func(c *fiber.Ctx) error {
+		var data Transaction
+		if err := c.BodyParser(&data); err != nil {
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid input")
 		}
 
 		blockchain := c.Locals("blockchain").(*Blockchain)
-		blockchain.addBlockData(transaction)
+		blockchain.addBlockData(data)
 
-		response := fiber.Map{"message": "Transaction added to the memory pool"}
+		response := fiber.Map{"message": "Data added to the memory pool"}
 		return c.Status(fiber.StatusCreated).JSON(response)
 	})
 
