@@ -21,8 +21,8 @@ type Transaction struct {
 // Block represents each 'item' in the blockchain
 type Block struct {
 	Transactions []Transaction
-	Hash         string
 	PreviousHash string
+	Hash         string
 	Timestamp    time.Time
 	Nonce          int
 }
