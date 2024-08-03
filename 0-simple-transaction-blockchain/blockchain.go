@@ -155,9 +155,19 @@ func main() {
 		response := fiber.Map{
 			"chain":  blockchain.Chain,
 			"length": len(blockchain.Chain),
+			"isValid": blockchain.isValid(),
 		}
 		return c.Status(fiber.StatusOK).JSON(response)
 	})
 
-	app.Listen(":3000")
+	// Get transactions of memory pool
+	app.Get("/memorypool", func(c *fiber.Ctx) error {
+		blockchain := c.Locals("blockchain").(*Blockchain)
+		response := fiber.Map{
+			"memorypool": blockchain.MemoryPool,
+		}
+		return c.Status(fiber.StatusOK).JSON(response)
+	})
+
+	app.Listen(":7000")
 }
