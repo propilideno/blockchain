@@ -7,98 +7,129 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/gofiber/fiber/v2"
 )
 
 type Block struct {
-	data         map[string]interface{}
-	hash         string
-	previousHash string
-	timestamp    time.Time
-	pow          int
+	Data         map[string]interface{}
+	Hash         string
+	PreviousHash string
+	Timestamp    time.Time
+	PoW          int
 }
 
 type Blockchain struct {
-	genesisBlock Block
-	chain        []Block
-	difficulty   int
+	GenesisBlock Block
+	Chain        []Block
+	Difficulty   int
 }
 
 func (b Block) calculateHash() string {
-	data, _ := json.Marshal(b.data)
-	blockData := b.previousHash + string(data) + b.timestamp.String() + strconv.Itoa(b.pow)
+	data, _ := json.Marshal(b.Data)
+	blockData := b.PreviousHash + string(data) + b.Timestamp.String() + strconv.Itoa(b.PoW)
 	blockHash := sha256.Sum256([]byte(blockData))
 	return fmt.Sprintf("%x", blockHash)
 }
 
 func (b *Block) mine(difficulty int) {
-	for !strings.HasPrefix(b.hash, strings.Repeat("0", difficulty)) {
-		b.pow++
-		b.hash = b.calculateHash()
+	for !strings.HasPrefix(b.Hash, strings.Repeat("0", difficulty)) {
+		b.PoW++
+		b.Hash = b.calculateHash()
 	}
 }
 
 func CreateBlockchain(difficulty int) Blockchain {
 	genesisBlock := Block{
-		hash:      "0",
-		timestamp: time.Now(),
+		Hash:      "0",
+		Timestamp: time.Now(),
 	}
 	return Blockchain{
-		genesisBlock,
-		[]Block{genesisBlock},
-		difficulty,
+		GenesisBlock: genesisBlock,
+		Chain:        []Block{genesisBlock},
+		Difficulty:   difficulty,
 	}
 }
 
-func (b *Blockchain) addBlock(from, to string, amount float64) {
-	blockData := map[string]interface{}{
-		"from":   from,
-		"to":     to,
-		"amount": amount,
-	}
-	lastBlock := b.chain[len(b.chain)-1]
+func (b *Blockchain) addBlock(data map[string]interface{}) {
+	lastBlock := b.Chain[len(b.Chain)-1]
 	newBlock := Block{
-		data:         blockData,
-		previousHash: lastBlock.hash,
-		timestamp:    time.Now(),
+		Data:         data,
+		PreviousHash: lastBlock.Hash,
+		Timestamp:    time.Now(),
 	}
-	newBlock.mine(b.difficulty)
-	b.chain = append(b.chain, newBlock)
+	newBlock.mine(b.Difficulty)
+	b.Chain = append(b.Chain, newBlock)
 }
 
 func (b Blockchain) isValid() bool {
-	for i := range b.chain[1:] {
-		previousBlock := b.chain[i]
-		currentBlock := b.chain[i+1]
-		if currentBlock.hash != currentBlock.calculateHash() || currentBlock.previousHash != previousBlock.hash {
+	for i := range b.Chain[1:] {
+		previousBlock := b.Chain[i]
+		currentBlock := b.Chain[i+1]
+		if currentBlock.Hash != currentBlock.calculateHash() || currentBlock.PreviousHash != previousBlock.Hash {
 			return false
 		}
 	}
 	return true
 }
 
-func (bc Blockchain) PrintBlocks() {
-	fmt.Println("----------------------------------------------------")
-	fmt.Println("Blockchain")
-	fmt.Println("----------------------------------------------------")
-	fmt.Printf("%-10s | %-30s | %-10s | %-20s | %-10s\n", "Index", "Timestamp", "Data", "Hash", "PrevHash")
-	fmt.Println("----------------------------------------------------")
-	for i, block := range bc.chain {
-		fmt.Printf("%-10d | %-30s | %-10v | %-20s | %-10s\n", i, block.timestamp.Format("2006-01-02 15:04:05"), block.data, block.hash, block.previousHash)
-	}
-	fmt.Println("----------------------------------------------------")
-}
-
 func main() {
-	// create a new blockchain instance with a mining difficulty of 2
+	app := fiber.New()
+
+	// Initialize the blockchain with a difficulty of 2
 	blockchain := CreateBlockchain(2)
 
-	// record transactions on the blockchain for Alice, Bob, and John
-	blockchain.addBlock("Alice", "Bob", 5)
-	blockchain.addBlock("John", "Bob", 2)
+	// Middleware to set blockchain in context
+	app.Use(func(c *fiber.Ctx) error {
+		c.Locals("blockchain", &blockchain)
+		return c.Next()
+	})
 
-	// print all blocks in the blockchain
-	blockchain.PrintBlocks()
+	app.Get("/mine", func(c *fiber.Ctx) error {
+		blockchain := c.Locals("blockchain").(*Blockchain)
 
-	// check if the blockchain is valid; expecting true
-	fmt.Println("Is blockchain valid?", blockchain.isValid())
+		// Mine a new block with a reward transaction
+		transaction := map[string]interface{}{
+			"from":   "0",
+			"to":     "miner-address",
+			"amount": 1,
+		}
+		blockchain.addBlock(transaction)
+
+		response := fiber.Map{
+			"message": "New Block Forged",
+			"index":   len(blockchain.Chain) - 1,
+		}
+		return c.Status(fiber.StatusOK).JSON(response)
+	})
+
+	app.Post("/transactions/new", func(c *fiber.Ctx) error {
+		var transaction map[string]interface{}
+		if err := c.BodyParser(&transaction); err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid input")
+		}
+
+		// Ensure transaction data is correct
+		if transaction["from"] == nil || transaction["to"] == nil || transaction["amount"] == nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Missing transaction data")
+		}
+
+		blockchain := c.Locals("blockchain").(*Blockchain)
+		blockchain.addBlock(transaction)
+
+		response := fiber.Map{"message": "Transaction added to the blockchain"}
+		return c.Status(fiber.StatusCreated).JSON(response)
+	})
+
+	app.Get("/chain", func(c *fiber.Ctx) error {
+		blockchain := c.Locals("blockchain").(*Blockchain)
+
+		response := fiber.Map{
+			"chain":  blockchain.Chain,
+			"length": len(blockchain.Chain),
+		}
+		return c.Status(fiber.StatusOK).JSON(response)
+	})
+
+	app.Listen(":3000")
 }
