@@ -24,7 +24,7 @@ type Block struct {
 	Hash         string
 	PreviousHash string
 	Timestamp    time.Time
-	PoW          int
+	Nonce          int
 }
 
 // Blockchain represents the entire chain
@@ -38,7 +38,7 @@ type Blockchain struct {
 // calculateHash calculates the hash of a block
 func (b Block) calculateHash() string {
 	data, _ := json.Marshal(b.Transactions)
-	blockData := b.PreviousHash + string(data) + b.Timestamp.String() + strconv.Itoa(b.PoW)
+	blockData := b.PreviousHash + string(data) + b.Timestamp.String() + strconv.Itoa(b.Nonce)
 	blockHash := sha256.Sum256([]byte(blockData))
 	return fmt.Sprintf("%x", blockHash)
 }
@@ -46,7 +46,7 @@ func (b Block) calculateHash() string {
 // mine mines a block
 func (b *Block) mine(difficulty int) {
 	for !strings.HasPrefix(b.Hash, strings.Repeat("0", difficulty)) {
-		b.PoW++
+		b.Nonce++
 		b.Hash = b.calculateHash()
 	}
 }
