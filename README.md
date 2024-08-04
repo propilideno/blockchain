@@ -8,7 +8,7 @@ Our goal is start simple and making the blockchain much complex
 - GET /memorypool
 - GET /mine
 - POST /transactions/new
-    > body: `{ "from": "Lucas", "to": "Filipe", "amount": 10 }`
+    - body: `{ "from": "Lucas", "to": "Filipe", "amount": 10 }`
 #### Lacks of
 - Transaction validation
 - Persistence
@@ -17,13 +17,13 @@ Our goal is start simple and making the blockchain much complex
     - P2P Network
     - Node discovery
 
-## [Simple Transactional Blockchain](./1-simple-transaction-blockchain/README.md)
+## [Simple Transactional Blockchain](./1-simple-transactional-blockchain/README.md)
 #### Routes
 - GET /chain
 - GET /memorypool
 - GET /mine?wallet=**base64_encoded_public_key**
 - POST /data/new
-    > body: `{ "from": "Lucas", "to": "Filipe", "amount": 10 }`
+    - body: `{ "from": "Lucas", "to": "Filipe", "amount": 10 }`
 
 #### Lacks of
 - Persistence
