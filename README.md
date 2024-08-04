@@ -1,5 +1,5 @@
 # Blockchain
-The best way to learn blockchain is by building one, this repository is your blockchain entrypoint from simple to complex.
+The best way to learn blockchain is by building one. This repository guides you from creating a basic blockchain to understanding advanced concepts, providing hands-on experience along the way. Dive in and start your blockchain journey today!
 
 ## [Simple Blockchain](./0-simple-blockchain/README.md)
 ```mermaid
