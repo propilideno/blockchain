@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -12,21 +11,10 @@ import (
 
 // SmartContract represents a smart contract in the blockchain
 type SmartContract struct {
-	ContractID    string `json:"contract_id"`
-	CreatorWallet string `json:"creator_wallet"`
-	Condition     string `json:"condition"`
-	Action        string `json:"action"`
-	Status        string `json:"status"`
-	Result        string `json:"result"`
-}
-
-// GenerateToken generates a random token for the contract
-func GenerateToken() (string, error) {
-	bytes := make([]byte, 16)
-	if _, err := rand.Read(bytes); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(bytes), nil
+	ContractID string `json:"contract_id"`
+	Wallet     string `json:"wallet"`
+	Code       string `json:"code"`
+	Status     string `json:"status"`
 }
 
 // Execute executes the action if the contract is completed
@@ -51,7 +39,7 @@ func (sc *SmartContract) periodicCheck(blockchain *Blockchain) {
 
 		time.Sleep(10 * time.Second) // Adjust the interval as needed
 
-		resp, err := http.Get(fmt.Sprintf("http://localhost:3000/acme?wallet=%s", sc.CreatorWallet))
+		resp, err := http.Get(fmt.Sprintf("http://localhost:3000/acme?wallet=%s", sc.Wallet))
 		if err != nil {
 			fmt.Println("Error checking contract condition:", err)
 			continue
@@ -61,7 +49,6 @@ func (sc *SmartContract) periodicCheck(blockchain *Blockchain) {
 		var result string
 		if _, err := fmt.Fscan(resp.Body, &result); err == nil && result == sc.calculateDigest() {
 			sc.Status = "completed"
-			sc.Result = result
 			fmt.Printf("Contract %s condition met\n", sc.ContractID)
 		}
 	}

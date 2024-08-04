@@ -27,13 +27,13 @@ type Block struct {
 
 // Blockchain represents the entire chain
 type Blockchain struct {
-	GenesisBlock   Block
-	Chain          []Block
-	MemoryPool     []BlockData
-	ContractPool   []SmartContract
-	Difficulty     int
-	RewardPerBlock float64
-	MaxCoins       float64
+	GenesisBlock    Block
+	Chain           []Block
+	TransactionPool []BlockData
+	ContractPool    []SmartContract
+	Difficulty      int
+	RewardPerBlock  float64
+	MaxCoins        float64
 }
 
 func generateRandomID() (string, error) {
@@ -84,12 +84,12 @@ func (b *Blockchain) addBlockData(data BlockData) error {
 	}
 
 	// Simulate adding the transaction to the memory pool and checking balances
-	memoryPool := append(b.MemoryPool, data)
-	if !validateMemoryPool(b, memoryPool) {
+	transactionPool := append(b.TransactionPool, data)
+	if !validateTransactionPool(b, transactionPool) {
 		return fmt.Errorf("You don't have enough coin to complete this transaction.")
 	}
 
-	b.MemoryPool = memoryPool
+	b.TransactionPool = transactionPool
 	return nil
 }
 
@@ -103,8 +103,8 @@ func (b *Blockchain) addSmartContract(contract SmartContract) error {
 	return nil
 }
 
-// validateMemoryPool checks if all transactions in the memory pool are valid
-func validateMemoryPool(b *Blockchain, memoryPool []BlockData) bool {
+// validateTransactionPool checks if all transactions in the memory pool are valid
+func validateTransactionPool(b *Blockchain, transactionPool []BlockData) bool {
 	balances := make(map[string]float64)
 	for _, block := range b.Chain {
 		for _, data := range block.Data {
@@ -118,7 +118,7 @@ func validateMemoryPool(b *Blockchain, memoryPool []BlockData) bool {
 		}
 	}
 
-	for _, data := range memoryPool {
+	for _, data := range transactionPool {
 		if tx, ok := data.(Transaction); ok {
 			if balances[tx.From]-tx.Amount < 0 {
 				return false
@@ -147,7 +147,7 @@ func (b *Blockchain) mine(miner string) (Block, error) {
 		Amount: b.RewardPerBlock,
 	}
 	newBlock := Block{
-		Data:         b.MemoryPool,
+		Data:         b.TransactionPool,
 		Contracts:    b.ContractPool,
 		Reward:       reward,
 		PreviousHash: lastBlock.Hash,
@@ -163,7 +163,7 @@ func (b *Blockchain) mine(miner string) (Block, error) {
 	b.Chain = append(b.Chain, newBlock)
 
 	// Clear the memory pool and contract pool
-	b.MemoryPool = nil
+	b.TransactionPool = nil
 	b.ContractPool = nil
 
 	return newBlock, nil
@@ -264,9 +264,8 @@ func main() {
 	// Add new smart contract
 	app.Post("/contract/new", func(c *fiber.Ctx) error {
 		var contract struct {
-			CreatorWallet string `json:"creator_wallet"`
-			Condition     string `json:"condition"`
-			Action        string `json:"action"`
+			Wallet string `json:"creator_wallet"`
+			Code   string `json:"code"`
 		}
 		if err := c.BodyParser(&contract); err != nil {
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid input")
@@ -278,11 +277,10 @@ func main() {
 		}
 
 		newContract := SmartContract{
-			ContractID:    contractID,
-			CreatorWallet: contract.CreatorWallet,
-			Condition:     contract.Condition,
-			Action:        contract.Action,
-			Status:        "pending",
+			ContractID: contractID,
+			Wallet:     contract.Wallet,
+			Code:       contract.Code,
+			Status:     "pending",
 		}
 
 		blockchain := c.Locals("blockchain").(*Blockchain)
@@ -310,11 +308,11 @@ func main() {
 	})
 
 	// Get data from the memory pool
-	app.Get("/memorypool", func(c *fiber.Ctx) error {
+	app.Get("/transactionpool", func(c *fiber.Ctx) error {
 		blockchain := c.Locals("blockchain").(*Blockchain)
 		response := fiber.Map{
-			"memorypool":   blockchain.MemoryPool,
-			"contractpool": blockchain.ContractPool,
+			"transactionpool": blockchain.TransactionPool,
+			"contractpool":    blockchain.ContractPool,
 		}
 		return c.Status(fiber.StatusOK).JSON(response)
 	})
