@@ -1,8 +1,38 @@
 # Blockchain
-
-Our goal is start simple and making the blockchain much complex
+The best way to learn blockchain is by building one, this repository is your blockchain entrypoint from simple to complex.
 
 ## [Simple Blockchain](./0-simple-blockchain/README.md)
+```mermaid
+classDiagram
+    direction LR
+
+    class Blockchain {
+        +Block[] Chain
+        +int Difficulty
+        +Transaction[] MemoryPool
+        +Block mine()
+        +void addTransaction(transaction Transaction)
+        +bool isValid()
+    }
+
+    class Block {
+        +Transaction[] Transactions
+        +string PreviousHash
+        +string Hash
+        +time.Time Timestamp
+        +int Nonce
+        +string calculateHash()
+        +void mine(difficulty int)
+    }
+
+    Blockchain "1" --> "*" Block : contains
+
+    Block <|-- Block1 : PreviousHash
+    Block1 <|-- Block2 : PreviousHash
+    Block2 <|-- Block3 : PreviousHash
+    Block3 <|-- Block4 : PreviousHash
+
+```
 #### Routes
 - GET /chain
 - GET /memorypool
@@ -18,6 +48,40 @@ Our goal is start simple and making the blockchain much complex
     - Node discovery
 
 ## [Simple Transactional Blockchain](./1-simple-transactional-blockchain/README.md)
+```mermaid
+classDiagram
+    direction LR
+
+    class Blockchain {
+        +Block[] Chain
+        +int Difficulty
+        +float64 RewardPerBlock
+        +float64 MaxCoins
+        +float64 getMinedCoins()
+        +float64 getBalance(address string)
+        +bool isValid()
+        +Block mine(miner string) Block
+        +void addBlockData(data BlockData)
+    }
+
+    class Block {
+        +BlockData[] Data
+        +BlockReward Reward
+        +string PreviousHash
+        +string Hash
+        +time.Time Timestamp
+        +int Nonce
+        +string calculateHash()
+        +void mine(difficulty int)
+    }
+
+    Blockchain "1" --> "*" Block : contains
+
+    Block <|-- Block1 : PreviousHash
+    Block1 <|-- Block2 : PreviousHash
+    Block2 <|-- Block3 : PreviousHash
+    Block3 <|-- Block4 : PreviousHash
+```
 #### Routes
 - GET /chain
 - GET /memorypool
