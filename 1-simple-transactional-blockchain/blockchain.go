@@ -64,10 +64,47 @@ func CreateBlockchain(difficulty int, rewardPerBlock float64, maxCoins float64) 
 }
 
 // addBlockData adds new data to the memory pool
-func (b *Blockchain) addBlockData(data BlockData) {
-	if data.Validate(b) {
-		b.MemoryPool = append(b.MemoryPool, data)
+func (b *Blockchain) addBlockData(data BlockData) error {
+	if !data.Validate(b) {
+		return fmt.Errorf("invalid transaction.")
 	}
+
+	// Simulate adding the transaction to the memory pool and checking balances
+	memoryPool := append(b.MemoryPool, data)
+	if !validateMemoryPool(b, memoryPool) {
+		return fmt.Errorf("You don't have enough coin to complete this transaction.")
+	}
+
+	b.MemoryPool = memoryPool
+	return nil
+}
+
+// validateMemoryPool checks if all transactions in the memory pool are valid
+func validateMemoryPool(b *Blockchain, memoryPool []BlockData) bool {
+	balances := make(map[string]float64)
+	for _, block := range b.Chain {
+		for _, data := range block.Data {
+			if tx, ok := data.(Transaction); ok {
+				balances[tx.From] -= tx.Amount
+				balances[tx.To] += tx.Amount
+			}
+		}
+		if block.Reward.Miner != "" {
+			balances[block.Reward.Miner] += block.Reward.Amount
+		}
+	}
+
+	for _, data := range memoryPool {
+		if tx, ok := data.(Transaction); ok {
+			if balances[tx.From]-tx.Amount < 0 {
+				return false
+			}
+			balances[tx.From] -= tx.Amount
+			balances[tx.To] += tx.Amount
+		}
+	}
+
+	return true
 }
 
 // mine mines a new block containing data from the memory pool
@@ -189,7 +226,10 @@ func main() {
 		}
 
 		blockchain := c.Locals("blockchain").(*Blockchain)
-		blockchain.addBlockData(data)
+		err := blockchain.addBlockData(data)
+		if err != nil {
+			return c.Status(fiber.StatusForbidden).SendString(err.Error())
+		}
 
 		response := fiber.Map{"message": "Data added to the memory pool"}
 		return c.Status(fiber.StatusCreated).JSON(response)
@@ -199,9 +239,9 @@ func main() {
 	app.Get("/chain", func(c *fiber.Ctx) error {
 		blockchain := c.Locals("blockchain").(*Blockchain)
 		response := fiber.Map{
-			"chain":     blockchain.Chain,
-			"length":    len(blockchain.Chain),
-			"isValid":   blockchain.isValid(),
+			"chain":      blockchain.Chain,
+			"length":     len(blockchain.Chain),
+			"isValid":    blockchain.isValid(),
 			"minedCoins": blockchain.getMinedCoins(),
 		}
 		return c.Status(fiber.StatusOK).JSON(response)
