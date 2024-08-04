@@ -1,7 +1,9 @@
 package main
 
 import (
+	"crypto/rand"
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -14,11 +16,13 @@ import (
 // Block represents each 'item' in the blockchain
 type Block struct {
 	Data         []BlockData
+	Contracts    []SmartContract
 	Reward       BlockReward
 	PreviousHash string
 	Hash         string
 	Timestamp    time.Time
 	Nonce        int
+	BlockReward  float64
 }
 
 // Blockchain represents the entire chain
@@ -26,16 +30,26 @@ type Blockchain struct {
 	GenesisBlock   Block
 	Chain          []Block
 	MemoryPool     []BlockData
+	ContractPool   []SmartContract
 	Difficulty     int
 	RewardPerBlock float64
 	MaxCoins       float64
 }
 
+func generateRandomID() (string, error) {
+	bytes := make([]byte, 16)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(bytes), nil
+}
+
 // calculateHash calculates the hash of a block
 func (b Block) calculateHash() string {
 	data, _ := json.Marshal(b.Data)
+	contracts, _ := json.Marshal(b.Contracts)
 	reward, _ := json.Marshal(b.Reward)
-	blockData := b.PreviousHash + string(data) + string(reward) + b.Timestamp.String() + strconv.Itoa(b.Nonce)
+	blockData := b.PreviousHash + string(data) + string(contracts) + string(reward) + b.Timestamp.String() + strconv.Itoa(b.Nonce)
 	blockHash := sha256.Sum256([]byte(blockData))
 	return fmt.Sprintf("%x", blockHash)
 }
@@ -76,6 +90,16 @@ func (b *Blockchain) addBlockData(data BlockData) error {
 	}
 
 	b.MemoryPool = memoryPool
+	return nil
+}
+
+func (b *Blockchain) addSmartContract(contract SmartContract) error {
+	if !contract.Validate(b) {
+		return fmt.Errorf("invalid smart contract")
+	}
+
+	b.ContractPool = append(b.ContractPool, contract)
+	contract.Execute(b)
 	return nil
 }
 
@@ -124,6 +148,7 @@ func (b *Blockchain) mine(miner string) (Block, error) {
 	}
 	newBlock := Block{
 		Data:         b.MemoryPool,
+		Contracts:    b.ContractPool,
 		Reward:       reward,
 		PreviousHash: lastBlock.Hash,
 		Timestamp:    time.Now(),
@@ -137,8 +162,9 @@ func (b *Blockchain) mine(miner string) (Block, error) {
 	newBlock.mine(b.Difficulty)
 	b.Chain = append(b.Chain, newBlock)
 
-	// Clear the memory pool
+	// Clear the memory pool and contract pool
 	b.MemoryPool = nil
+	b.ContractPool = nil
 
 	return newBlock, nil
 }
@@ -235,6 +261,42 @@ func main() {
 		return c.Status(fiber.StatusCreated).JSON(response)
 	})
 
+	// Add new smart contract
+	app.Post("/contract/new", func(c *fiber.Ctx) error {
+		var contract struct {
+			CreatorWallet string `json:"creator_wallet"`
+			Condition     string `json:"condition"`
+			Action        string `json:"action"`
+		}
+		if err := c.BodyParser(&contract); err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid input")
+		}
+
+		contractID, err := generateRandomID()
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).SendString("Could not generate contract ID")
+		}
+
+		newContract := SmartContract{
+			ContractID:    contractID,
+			CreatorWallet: contract.CreatorWallet,
+			Condition:     contract.Condition,
+			Action:        contract.Action,
+			Status:        "pending",
+		}
+
+		blockchain := c.Locals("blockchain").(*Blockchain)
+		err = blockchain.addSmartContract(newContract)
+		if err != nil {
+			return c.Status(fiber.StatusForbidden).SendString(err.Error())
+		}
+
+		digest := newContract.calculateDigest()
+
+		response := fiber.Map{"message": "Smart contract added to the pool", "digest": digest}
+		return c.Status(fiber.StatusCreated).JSON(response)
+	})
+
 	// Get the full blockchain
 	app.Get("/chain", func(c *fiber.Ctx) error {
 		blockchain := c.Locals("blockchain").(*Blockchain)
@@ -251,7 +313,8 @@ func main() {
 	app.Get("/memorypool", func(c *fiber.Ctx) error {
 		blockchain := c.Locals("blockchain").(*Blockchain)
 		response := fiber.Map{
-			"memorypool": blockchain.MemoryPool,
+			"memorypool":   blockchain.MemoryPool,
+			"contractpool": blockchain.ContractPool,
 		}
 		return c.Status(fiber.StatusOK).JSON(response)
 	})
