@@ -54,10 +54,9 @@ func (b *Block) mine(difficulty int) {
 // CreateBlockchain creates a new blockchain with a genesis block
 func CreateBlockchain(difficulty int) Blockchain {
 	genesisBlock := Block{
+		Hash:      "0",
 		Timestamp: time.Now(),
 	}
-	genesisBlock.mine(difficulty)
-	genesisBlock.Hash = genesisBlock.calculateHash()
 	return Blockchain{
 		GenesisBlock: genesisBlock,
 		Chain:        []Block{genesisBlock},
