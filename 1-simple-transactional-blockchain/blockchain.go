@@ -216,5 +216,15 @@ func main() {
 		return c.Status(fiber.StatusOK).JSON(response)
 	})
 
+	// Get information of a wallet
+	app.Get("/info", func(c *fiber.Ctx) error {
+		blockchain := c.Locals("blockchain").(*Blockchain)
+		wallet := c.Query("wallet")
+		response := fiber.Map{
+			"balance": blockchain.getBalance(wallet),
+		}
+		return c.Status(fiber.StatusOK).JSON(response)
+	})
+
 	app.Listen(":7000")
 }

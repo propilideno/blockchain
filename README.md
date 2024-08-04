@@ -90,11 +90,18 @@ classDiagram
     Block3 <|-- Block4 : PreviousHash
 ```
 #### Routes
+- GET /info?wallet=**wallet_id**
 - GET /chain
 - GET /memorypool
-- GET /mine?wallet=**base64_encoded_public_key**
+- GET /mine?wallet=**wallet_id**
 - POST /data/new
     - body: `{ "from": "Lucas", "to": "Filipe", "amount": 10 }`
+
+## Lacks of
+- Persistence
+- Descentralization
+    - P2P Network
+    - Node discovery
 
 #### Lacks of
 - Persistence
