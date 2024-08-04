@@ -2,6 +2,10 @@
 The best way to learn blockchain is by building one. This repository guides you from creating a basic blockchain to understanding advanced concepts, providing hands-on experience along the way. Dive in and start your blockchain journey today!
 
 ## [Simple Blockchain](./0-simple-blockchain/README.md)
+```
+docker run -p 7000:7000 propilideno/simple-blockchain
+```
+
 ```mermaid
 classDiagram
     direction LR
@@ -48,6 +52,9 @@ classDiagram
     - Node discovery
 
 ## [Simple Transactional Blockchain](./1-simple-transactional-blockchain/README.md)
+```
+docker run -p 7000:7000 propilideno/simple-transactional-blockchain
+```
 ```mermaid
 classDiagram
     direction LR
