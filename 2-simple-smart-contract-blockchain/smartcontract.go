@@ -5,55 +5,60 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"time"
 )
 
 // SmartContract represents a smart contract in the blockchain
 type SmartContract struct {
-	ContractID string `json:"contract_id"`
-	Wallet     string `json:"wallet"`
-	Code       string `json:"code"`
-	Status     string `json:"status"`
+	ContractID    string `json:"contract_id"`
+	Wallet        string `json:"wallet"`
+	Type          string `json:"type"`
+	Specification string `json:"specification"`
+	Code          Code   `json:"-"`
 }
 
-// Execute executes the action if the contract is completed
-func (sc *SmartContract) Execute(blockchain *Blockchain) {
-	if sc.Status == "completed" {
-		fmt.Printf("Contract %s executed\n", sc.ContractID)
-		// Add custom execution logic here
-	}
+// Code interface defines the methods for a smart contract
+type Code interface {
+	Execute(blockchain *Blockchain) error
+	Validate(blockchain *Blockchain) bool
 }
 
-// Validate checks if the smart contract is valid
-func (sc *SmartContract) Validate(blockchain *Blockchain) bool {
+type ContractExecution struct {
+	ContractID  string  `json:"contract_id"`
+	ConsumedGas float64 `json:"consumed_gas"`
+	Result      string  `json:"result"`
+	Timestamp   time.Time `json:"timestamp"`
+	Miner       string  `json:"miner"`
+}
+
+// CertificateRequest implements the Code interface for certificate requests
+type CertificateRequest struct {
+	Certificate string `json:"certificate"`
+}
+
+func (cr *CertificateRequest) Execute(blockchain *Blockchain) error {
+	// Add logic to process the certificate request
+	fmt.Println("Executing certificate request...")
+	return nil
+}
+
+func (cr *CertificateRequest) Validate(blockchain *Blockchain) bool {
+	// Add validation logic for the certificate request
+	fmt.Println("Validating certificate request...")
 	return true
 }
 
-func (sc *SmartContract) periodicCheck(blockchain *Blockchain) {
-	for {
-		if sc.Status == "completed" {
-			sc.Execute(blockchain)
-			break
-		}
-
-		time.Sleep(10 * time.Second) // Adjust the interval as needed
-
-		resp, err := http.Get(fmt.Sprintf("http://localhost:3000/acme?wallet=%s", sc.Wallet))
-		if err != nil {
-			fmt.Println("Error checking contract condition:", err)
-			continue
-		}
-		defer resp.Body.Close()
-
-		var result string
-		if _, err := fmt.Fscan(resp.Body, &result); err == nil && result == sc.calculateDigest() {
-			sc.Status = "completed"
-			fmt.Printf("Contract %s condition met\n", sc.ContractID)
-		}
-	}
+// Execute calls the Execute method of the Code interface
+func (sc *SmartContract) Execute(blockchain *Blockchain) error {
+	return sc.Code.Execute(blockchain)
 }
 
+// Validate calls the Validate method of the Code interface
+func (sc *SmartContract) Validate(blockchain *Blockchain) bool {
+	return sc.Code.Validate(blockchain)
+}
+
+// calculateDigest generates a SHA256 digest of the contract data
 func (sc *SmartContract) calculateDigest() string {
 	data, _ := json.Marshal(sc)
 	hash := sha256.Sum256(data)
