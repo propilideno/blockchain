@@ -14,6 +14,7 @@ import (
 )
 
 const BLOCK_REWARD_WALLET string = "Block Reward"
+const GAS_PRICE float64 = 0.1
 
 // Block represents each 'item' in the blockchain
 type Block struct {
@@ -227,11 +228,6 @@ func generateRandomID() (string, error) {
 	return hex.EncodeToString(bytes), nil
 }
 
-// extract the public key from a certificate
-func extractPublicKeyFromCertificate(certificate string) string {
-	return "TODO"
-}
-
 // main sets up the server and routes
 func main() {
 	app := fiber.New()
@@ -321,9 +317,10 @@ func main() {
 	})
 
 	// Add new smart contract
-	app.Post("/certificate/request", func(c *fiber.Ctx) error {
+	app.Post("/contract/new", func(c *fiber.Ctx) error {
 		var request struct {
-			Certificate string `json:"certificate"`
+			Specification string `json:"specification"`
+			Wallet string `json:"wallet"`
 		}
 
 		if err := c.BodyParser(&request); err != nil {
@@ -337,10 +334,10 @@ func main() {
 
 		smartContract := SmartContract{
 			ContractID:    contractID,
-			Wallet:        extractPublicKeyFromCertificate(request.Certificate),
-			Type:          "certificate",
-			Specification: request.Certificate,
-			Code:          &CertificateRequest{Certificate: request.Certificate},
+			Wallet:        request.Wallet,
+			Type:          "contract_example",
+			Specification: request.Specification,
+			Code:          &ContractCodeExample{},
 		}
 
 		blockchain := c.Locals("blockchain").(*Blockchain)
@@ -384,7 +381,7 @@ func main() {
 		// Add the contract execution request to the ContractExecutionPool
 		execution := ContractExecution{
 			ContractID:  request.ContractID,
-			ConsumedGas: 0.1, // Fixed gas fee
+			ConsumedGas: GAS_PRICE, // Fixed gas fee
 			Result:      "",  // Result will be set when mined
 			Miner:       "",  // Miner will be set when mined
 			Timestamp:   time.Now(),

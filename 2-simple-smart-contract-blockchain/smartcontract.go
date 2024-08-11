@@ -4,7 +4,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"time"
 )
 
@@ -13,7 +12,7 @@ type SmartContract struct {
 	ContractID    string `json:"contract_id"`
 	Wallet        string `json:"wallet"`
 	Type          string `json:"type"`
-	Specification string `json:"specification"`
+	Specification string `json:"spec"`
 	Code          Code   `json:"-"`
 }
 
@@ -24,28 +23,11 @@ type Code interface {
 }
 
 type ContractExecution struct {
-	ContractID  string  `json:"contract_id"`
-	ConsumedGas float64 `json:"consumed_gas"`
-	Result      string  `json:"result"`
+	ContractID  string    `json:"contract_id"`
+	ConsumedGas float64   `json:"consumed_gas"`
+	Result      string    `json:"result"`
 	Timestamp   time.Time `json:"timestamp"`
-	Miner       string  `json:"miner"`
-}
-
-// CertificateRequest implements the Code interface for certificate requests
-type CertificateRequest struct {
-	Certificate string `json:"certificate"`
-}
-
-func (cr *CertificateRequest) Execute(blockchain *Blockchain) error {
-	// Add logic to process the certificate request
-	fmt.Println("Executing certificate request...")
-	return nil
-}
-
-func (cr *CertificateRequest) Validate(blockchain *Blockchain) bool {
-	// Add validation logic for the certificate request
-	fmt.Println("Validating certificate request...")
-	return true
+	Miner       string    `json:"miner"`
 }
 
 // Execute calls the Execute method of the Code interface
