@@ -355,7 +355,7 @@ func main() {
 	app.Post("/contract/execute", func(c *fiber.Ctx) error {
 		// Define a struct to parse the request body
 		var request struct {
-			ContractID string `json:"contractId"`
+			ContractID string `json:"contract_id"`
 		}
 
 		// Parse the request body

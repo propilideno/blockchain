@@ -21,7 +21,7 @@ genkeypair(){
 - GET /memorypool
 ### Used by Miners
 - GET /mine/block?wallet=**wallet_id**
-- GET /mine/wallet?wallet=**wallet_id**
+- GET /mine/contract?wallet?wallet=**wallet_id**
 - GET /mine/transaction?wallet=**wallet_id**
 ### Used by Wallets
 - POST /contract/execute
