@@ -35,14 +35,17 @@ type Blockchain struct {
 	MaxCoins              float64
 }
 
-// NewBlock creates a new block with the given parameters and calculates its hash
-func NewBlock(previousHash string) Block {
-	block := Block{
-		PreviousHash: previousHash,
-		Timestamp:    time.Now(),
+func (bc *Blockchain) appendNewEmptyBlock() {
+	block := Block {
+		PreviousHash: bc.getLastBlock().Hash,
+		Timestamp: time.Now(),
 	}
 	block.Hash = block.calculateHash()
-	return block
+	bc.Chain = append(bc.Chain,block)
+}
+
+func (bc Blockchain) getLastBlock() *Block {
+	return &bc.Chain[len(bc.Chain)-1]
 }
 
 // calculateHash calculates the hash of a block
@@ -76,104 +79,91 @@ func CreateBlockchain(difficulty int, rewardPerBlock float64, maxCoins float64) 
 	}
 }
 
-func (b *Blockchain) findContractByID(contractID string) *SmartContract {
-	fmt.Printf("Blockchain state: %+v\n", b.Chain)
-	fmt.Printf("Looking for contract ID: %s\n", contractID)
-
-	for blockIndex, block := range b.Chain {
-		fmt.Printf("Inspecting block %d with hash: %s\n", blockIndex, block.Hash)
+func (bc *Blockchain) findContractByID(contractID string) *SmartContract {
+	for _, block := range bc.Chain {
 		for i := range block.Data.Contracts {
-			fmt.Printf("Checking contract ID: %s in block %d\n", block.Data.Contracts[i].ContractID, blockIndex)
 			if block.Data.Contracts[i].ContractID == contractID {
-				fmt.Println("Contract found!")
 				return &block.Data.Contracts[i]
 			}
 		}
 	}
-
 	fmt.Println("Contract not found.")
 	return nil
 }
 
 // addContract adds a smart contract directly to the current block
-func (b *Blockchain) addContract(contract SmartContract) {
-	lastBlock := &b.Chain[len(b.Chain)-1]
+func (bc *Blockchain) addContract(contract SmartContract) {
+	lastBlock := bc.getLastBlock()
 	lastBlock.Data.Contracts = append(lastBlock.Data.Contracts, contract)
 }
 
 // addTransaction adds a transaction to the transaction pool after validating it
-func (b *Blockchain) addTransaction(tx Transaction) error {
+func (bc *Blockchain) addTransaction(tx Transaction) error {
 	// Validate the transaction
-	if !tx.Validate(b) {
+	if !tx.Validate(bc) {
 		return fmt.Errorf("transaction validation failed: insufficient balance or invalid transaction")
 	}
 
 	// If valid, add the transaction to the pool
-	b.TransactionPool = append(b.TransactionPool, tx)
+	bc.TransactionPool = append(bc.TransactionPool, tx)
 	return nil
 }
 
 // mineTransaction mines transactions from the transaction pool into the current block
-func (b *Blockchain) mineTransaction() error {
-	if len(b.TransactionPool) == 0 {
+func (bc *Blockchain) mineTransaction() error {
+	if len(bc.TransactionPool) == 0 {
 		return fmt.Errorf("no transactions to mine")
 	}
 
-	// Get the current block (Last block in the chain)
-	lastBlock := &b.Chain[len(b.Chain)-1]
+	lastBlock := bc.getLastBlock()
 
 	// Process the first transaction in the pool (FIFO)
-	transaction := b.TransactionPool[0]
+	transaction := bc.TransactionPool[0]
 	lastBlock.Data.Transactions = append(lastBlock.Data.Transactions, transaction)
 
 	// Remove the processed transaction from the pool
-	b.TransactionPool = b.TransactionPool[1:]
+	bc.TransactionPool = bc.TransactionPool[1:]
 
 	return nil
 }
 
 // mineContractExecution mines contract executions from the execution pool into the current block
-func (b *Blockchain) mineContractExecution(miner string) float64 {
-	lastBlock := &b.Chain[len(b.Chain)-1]
+func (bc *Blockchain) mineContractExecution(miner string) float64 {
+	lastBlock := bc.getLastBlock()
 
-	if len(b.ContractExecutionPool) > 0 {
+	if len(bc.ContractExecutionPool) > 0 {
 		// Process the first contract execution in the pool (FIFO)
-		execpool := b.ContractExecutionPool[0]
+		execpool := bc.ContractExecutionPool[0]
 
 		// Execute the contract
-		contract := b.findContractByID(execpool.ContractID)
+		contract := bc.findContractByID(execpool.ContractID)
 		if contract != nil {
-			contract.Execute(b)
+			contract.Execute(bc)
 			execpool.Miner = miner
 			lastBlock.Data.ContractExecutionHistory = append(lastBlock.Data.ContractExecutionHistory, execpool)
 		}
 
 		// Remove the processed contract execution from the pool
-		b.ContractExecutionPool = b.ContractExecutionPool[1:]
+		bc.ContractExecutionPool = bc.ContractExecutionPool[1:]
 		return execpool.ConsumedGas
 	}
 	return 0
 }
 
 
-func (b *Blockchain) mineBlock(miner string) (Block, error) {
-	// Get the current block (Last block in the chain)
-	currentBlock := &b.Chain[len(b.Chain)-1]
-
+func (bc *Blockchain) mineBlock(miner string) (Block, error) {
+	currentBlock := bc.getLastBlock()
 	// Determine the block reward based on the maximum coins limit
-	if b.getMinedCoins()+b.RewardPerBlock <= b.MaxCoins {
+	if bc.getMinedCoins()+bc.RewardPerBlock <= bc.MaxCoins {
 		currentBlock.Data.Transactions = append(currentBlock.Data.Transactions, Transaction{
 			From: BLOCK_REWARD_WALLET,
 			To: miner,
-			Amount: b.RewardPerBlock,
+			Amount: bc.RewardPerBlock,
 		})
 	}
 
-	// Mine the current block
-	currentBlock.mine(b.Difficulty)
-
-	// Create a new empty block and append it to the chain using the constructor
-	b.Chain = append(b.Chain, NewBlock(currentBlock.Hash))
+	currentBlock.mine(bc.Difficulty)
+	bc.appendNewEmptyBlock()
 
 	// Return the mined block
 	return *currentBlock, nil
@@ -182,10 +172,10 @@ func (b *Blockchain) mineBlock(miner string) (Block, error) {
 
 
 // isValid checks if the blockchain is valid
-func (b Blockchain) isValid() bool {
-	for i := range b.Chain[1:] {
-		previousBlock := b.Chain[i]
-		currentBlock := b.Chain[i+1]
+func (bc Blockchain) isValid() bool {
+	for i := range bc.Chain[1:] {
+		previousBlock := bc.Chain[i]
+		currentBlock := bc.Chain[i+1]
 		if currentBlock.Hash != currentBlock.calculateHash() || currentBlock.PreviousHash != previousBlock.Hash {
 			return false
 		}
@@ -194,9 +184,9 @@ func (b Blockchain) isValid() bool {
 }
 
 // getBalance calculates the balance of a specific address
-func (b *Blockchain) getBalance(address string) float64 {
+func (bc *Blockchain) getBalance(address string) float64 {
 	balance := 0.0
-	for _, block := range b.Chain {
+	for _, block := range bc.Chain {
 		for _, data := range block.Data.Transactions {
 			if tx := data; tx.From == address {
 				balance -= tx.Amount
@@ -206,7 +196,7 @@ func (b *Blockchain) getBalance(address string) float64 {
 		}
 	}
 
-	for _, history := range b.ContractExecutionPool {
+	for _, history := range bc.ContractExecutionPool {
 		if history.ContractID == address {
 			balance -= history.ConsumedGas
 		}
@@ -216,9 +206,9 @@ func (b *Blockchain) getBalance(address string) float64 {
 }
 
 // getMinedCoins calculates the total mined coins
-func (b Blockchain) getMinedCoins() float64 {
+func (bc Blockchain) getMinedCoins() float64 {
 	totalMined := 0.0
-	for _, block := range b.Chain {
+	for _, block := range bc.Chain {
 		for _, tx := range block.Data.Transactions {
 			if tx.From == BLOCK_REWARD_WALLET {
 				totalMined += tx.Amount
