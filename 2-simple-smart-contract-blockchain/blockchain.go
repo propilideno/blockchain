@@ -271,7 +271,7 @@ func main() {
 		// Mine the transaction
 		err := blockchain.mineTransaction()
 		if err != nil {
-			return c.Status(fiber.StatusNoContent).SendString("No transactions to mine")
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{ "message": "No transactions to mine" })
 		}
 
 		response := fiber.Map{
@@ -298,7 +298,7 @@ func main() {
 			}
 			return c.Status(fiber.StatusOK).JSON(response)
 		} else {
-			return c.Status(fiber.StatusNoContent).SendString("No contracts to mine")
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{ "message": "No contracts to mine" })
 		}
 	})
 
