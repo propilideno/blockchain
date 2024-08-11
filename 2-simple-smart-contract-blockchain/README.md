@@ -15,9 +15,18 @@ genkeypair(){
 - GET /info?wallet=**wallet_id**
 - GET /chain
 - GET /memorypool
-- GET /mine?wallet=**wallet_id**
-- POST /data/new
+### Used by Miners
+- GET /mine/block?wallet=**wallet_id**
+- GET /mine/wallet?wallet=**wallet_id**
+- GET /mine/transaction?wallet=**wallet_id**
+### Used by Wallets
+- POST /contract/execute
+    - body: `{ "contract_id": "0x301283465"}`
+- POST /transaction/new
     - body: `{ "from": "Lucas", "to": "Filipe", "amount": 10 }`
+- POST /contract/new
+    - body: `{ "wallet": "Lucas", "specification": "my_contract_specification"}`
+
 
 ## Lacks of
 - Persistence
