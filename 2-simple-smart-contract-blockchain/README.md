@@ -8,7 +8,11 @@ genkeypair(){
     KEY_DIR="./keys/$1"
     PVT_KEY="$KEY_DIR/$1.key"
     PUB_KEY="$KEY_DIR/$1.pub"
-    mkdir -p $KEY_DIR && openssl genpkey -algorithm RSA -out $PVT_KEY -pkeyopt rsa_keygen_bits:1024 && openssl rsa -pubout -in $PVT_KEY -out $PUB_KEY && echo "$1: $(base64 -w0 $PUB_KEY)" >> $WALLETS
+    SELFSIGNED_CRT="$KEY_DIR/$1.crt"
+    mkdir -p $KEY_DIR && openssl genpkey -algorithm RSA -out $PVT_KEY -pkeyopt rsa_keygen_bits:1024
+    echo "== $1 ==" >> $WALLETS
+    openssl rsa -pubout -in $PVT_KEY -out $PUB_KEY && echo -e "\t- PUB_KEY: $(base64 -w0 $PUB_KEY)" >> $WALLETS
+    openssl req -new -x509 -key $PVT_KEY -out $SELFSIGNED_CRT -subj "/CN=www.propi.dev" -days 365 && echo -e "\t- CRT: $(base64 -w0 $SELFSIGNED_CRT)" >> $WALLETS
 }
 ```
 ## Routes
