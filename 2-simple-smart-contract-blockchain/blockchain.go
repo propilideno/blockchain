@@ -13,6 +13,8 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
+const BLOCK_REWARD_WALLET string = "Block Reward"
+
 // Block represents each 'item' in the blockchain
 type Block struct {
 	Data         BlockData   `json:"data"`
@@ -20,7 +22,6 @@ type Block struct {
 	Hash         string      `json:"hash"`
 	Timestamp    time.Time   `json:"timestamp"`
 	Nonce        int         `json:"nonce"`
-	BlockReward  BlockReward `json:"block_reward"`
 }
 
 // Blockchain represents the entire chain
@@ -47,8 +48,7 @@ func NewBlock(previousHash string) Block {
 // calculateHash calculates the hash of a block
 func (b Block) calculateHash() string {
 	data, _ := json.Marshal(b.Data)
-	reward, _ := json.Marshal(b.BlockReward)
-	blockData := b.PreviousHash + string(data) + string(reward) + b.Timestamp.String() + strconv.Itoa(b.Nonce)
+	blockData := b.PreviousHash + string(data) + b.Timestamp.String() + strconv.Itoa(b.Nonce)
 	blockHash := sha256.Sum256([]byte(blockData))
 	return fmt.Sprintf("%x", blockHash)
 }
@@ -161,10 +161,12 @@ func (b *Blockchain) mineBlock(miner string) (Block, error) {
 	currentBlock := &b.Chain[len(b.Chain)-1]
 
 	// Determine the block reward based on the maximum coins limit
-	if b.getMinedCoins()+b.RewardPerBlock > b.MaxCoins {
-		currentBlock.BlockReward = BlockReward{Miner: miner, Amount: 0}
-	} else {
-		currentBlock.BlockReward = BlockReward{Miner: miner, Amount: b.RewardPerBlock}
+	if b.getMinedCoins()+b.RewardPerBlock <= b.MaxCoins {
+		currentBlock.Data.Transactions = append(currentBlock.Data.Transactions, Transaction{
+			From: BLOCK_REWARD_WALLET,
+			To: miner,
+			Amount: b.RewardPerBlock,
+		})
 	}
 
 	// Mine the current block
@@ -202,9 +204,6 @@ func (b *Blockchain) getBalance(address string) float64 {
 				balance += tx.Amount
 			}
 		}
-		if block.BlockReward.Miner == address {
-			balance += block.BlockReward.Amount
-		}
 	}
 
 	for _, history := range b.ContractExecutionPool {
@@ -220,7 +219,11 @@ func (b *Blockchain) getBalance(address string) float64 {
 func (b Blockchain) getMinedCoins() float64 {
 	totalMined := 0.0
 	for _, block := range b.Chain {
-		totalMined += block.BlockReward.Amount
+		for _, tx := range block.Data.Transactions {
+			if tx.From == BLOCK_REWARD_WALLET {
+				totalMined += tx.Amount
+			}
+		}
 	}
 	return totalMined
 }
